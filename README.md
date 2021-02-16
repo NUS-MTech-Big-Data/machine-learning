@@ -1,6 +1,6 @@
-#Dev Setup
+# Dev Setup
 
-- IDE : Intellij
+IDE : Intellij
 
 ```.env
 File | Open from main Menu
