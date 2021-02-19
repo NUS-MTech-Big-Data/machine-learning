@@ -39,14 +39,6 @@ object SupervisedEmotions {
 
     val supervisedModel = pipeline.fit(trainingDataSet)
 
-    val testDataSet = spark.read.option("delimiter", ";")
-      .schema(schema)
-      .csv("./src/main/resources/test.csv")
-
-    testDataSet.show()
-
-    val results = supervisedModel.transform(testDataSet)
-
-    results.select("sentence", "emotion", "class.result").show(10)
+    supervisedModel.write.save("v1_supervised")
   }
 }
