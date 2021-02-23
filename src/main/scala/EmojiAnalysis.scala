@@ -1,23 +1,22 @@
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.ml.feature.Tokenizer
-import org.apache.spark.ml.feature.RegexTokenizer
-import org.apache.spark.ml.feature.StopWordsRemover
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.{StringType, StructType}
+import org.apache.spark.sql.functions._
 
 object EmojiAnalysis {
 
   def emojiAnalysis(tweet : String) {
 
-    //val emojis="😃😜😍"
-    val inputEmoji = "ee ddd eee sss 😃😜😍";
+    val inputEmoji = "I am going to school 😃 😜 😍 😡 😕 😟 😇"
+
     val ArrayEmoji = extractEmojiFromSentence(inputEmoji)
      println(ArrayEmoji.mkString(" "))
     val emojiUnicodes = getUnicodeOfEmoji(ArrayEmoji)
     emojiUnicodes.show(false)
     val value = findEmotionLabelForEmoji(emojiUnicodes)
     value.show(false)
-
+    val emojiDataFrame = calculateMeanForEmojiCategories(value)
+    val categoryLabel = emojiDataFrame.select("emojiCategory")
   }
 
   /**
@@ -58,6 +57,46 @@ object EmojiAnalysis {
    val emojiCategory = emojiDictionary.join(emojiDataFrame, "unicode")
     (emojiCategory.select("emoji","unicode","emotionCategory")).show(false)
     return  emojiCategory
+  }
+
+  /**
+   * Calculate the mean for each emoji Category
+   */
+  def calculateMeanForEmojiCategories ( emojiData: DataFrame) : DataFrame = {
+    var finalEmojiLabel : DataFrame = null
+    val existingSparkSession = SparkSession.builder().getOrCreate()
+    import existingSparkSession.sqlContext.implicits._
+    val distinctEmojiCategories = emojiData.select("emotionCategory").distinct().count()
+    print("--------"+distinctEmojiCategories)
+    if ( distinctEmojiCategories == 1) {
+      finalEmojiLabel = emojiData.select("emotionCategory")
+      return finalEmojiLabel
+
+    } else {
+      val groupByCategoryCountDataFrame = emojiData.groupBy("emotionCategory").agg(count(lit(1)).alias("numberOfRecords")).
+       groupBy("emotionCategory").agg(mean("numberOfRecords"))
+      groupByCategoryCountDataFrame.show(false)
+      val averageValDataFrame =  groupByCategoryCountDataFrame.groupBy("emotionCategory").agg(max("avg(numberOfRecords)"))
+      averageValDataFrame.show(false)
+      val aliasDataFrame = averageValDataFrame.withColumnRenamed("max(avg(numberOfRecords))", "average")
+      aliasDataFrame.show(false)
+      aliasDataFrame.orderBy(desc("average")).limit(1).show()
+      return aliasDataFrame
+    }
+  }
+
+  def createFinalDataFrame (inputSentence : String, analysedCategoryLabel : String) : DataFrame = {
+    val existingSparkSession = SparkSession.builder().getOrCreate()
+    import existingSparkSession.implicits._
+    val columnHeadings = Seq("sentence", "label")
+    val data = Seq((inputSentence, analysedCategoryLabel))
+    val emojiRdd = existingSparkSession.sparkContext.parallelize(data)
+    val finalEmojiAnalyzedDataFrame = emojiRdd.toDF()
+    return  finalEmojiAnalyzedDataFrame
+  }
+
+  def extractedTextWithoutEmoji (tweetSentence : String) : String = {
+
   }
 
 }
