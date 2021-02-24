@@ -16,7 +16,7 @@ object EmojiAnalysis {
     val value = findEmotionLabelForEmoji(emojiUnicodes)
     value.show(false)
     val emojiDataFrame = calculateMeanForEmojiCategories(value)
-    val categoryLabel = emojiDataFrame.select("emojiCategory")
+    val categoryLabel = emojiDataFrame.select("emotionCategory")
   }
 
   /**
@@ -95,8 +95,8 @@ object EmojiAnalysis {
     return  finalEmojiAnalyzedDataFrame
   }
 
-  def extractedTextWithoutEmoji (tweetSentence : String) : String = {
+ /* def extractedTextWithoutEmoji (tweetSentence : String) : String = {
 
-  }
+  }*/
 
 }
