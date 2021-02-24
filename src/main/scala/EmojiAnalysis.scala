@@ -1,13 +1,19 @@
+import java.io.{BufferedWriter, FileWriter}
+
+import au.com.bytecode.opencsv.CSVWriter
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.sql.functions._
 
+import scala.collection.mutable.ListBuffer
+import scala.util.Random
+
 object EmojiAnalysis {
 
   def emojiAnalysis(tweet : String) {
 
-    val inputEmoji = "I am going to school 😃 😜 😍 😡 😕 😟 😇"
+    val inputEmoji = "I want to play table tennis  😡 😕 😟 😇"
 
     val ArrayEmoji = extractEmojiFromSentence(inputEmoji)
      println(ArrayEmoji.mkString(" "))
@@ -15,8 +21,12 @@ object EmojiAnalysis {
     emojiUnicodes.show(false)
     val value = findEmotionLabelForEmoji(emojiUnicodes)
     value.show(false)
-    val emojiDataFrame = calculateMeanForEmojiCategories(value)
-    val categoryLabel = emojiDataFrame.select("emotionCategory")
+    val emojiDataFrame = calculateMeanForEmojiCategories(value, inputEmoji)
+    val categoryLabel = emojiDataFrame.select("emotionCategory").collect().map(_.getString(0)).mkString("")
+    val sentenceWithoutEmoji = extractedTextWithoutEmoji(inputEmoji)
+    val formatedDataFrameWithLabel = createFinalDataFrame(sentenceWithoutEmoji, categoryLabel)
+    formatedDataFrameWithLabel.show(false)
+
   }
 
   /**
@@ -62,12 +72,11 @@ object EmojiAnalysis {
   /**
    * Calculate the mean for each emoji Category
    */
-  def calculateMeanForEmojiCategories ( emojiData: DataFrame) : DataFrame = {
+  def calculateMeanForEmojiCategories ( emojiData: DataFrame, tweet : String) : DataFrame = {
     var finalEmojiLabel : DataFrame = null
     val existingSparkSession = SparkSession.builder().getOrCreate()
     import existingSparkSession.sqlContext.implicits._
     val distinctEmojiCategories = emojiData.select("emotionCategory").distinct().count()
-    print("--------"+distinctEmojiCategories)
     if ( distinctEmojiCategories == 1) {
       finalEmojiLabel = emojiData.select("emotionCategory")
       return finalEmojiLabel
@@ -80,23 +89,28 @@ object EmojiAnalysis {
       averageValDataFrame.show(false)
       val aliasDataFrame = averageValDataFrame.withColumnRenamed("max(avg(numberOfRecords))", "average")
       aliasDataFrame.show(false)
-      aliasDataFrame.orderBy(desc("average")).limit(1).show()
-      return aliasDataFrame
+     val categoryLabelDataframe =  aliasDataFrame.orderBy(desc("average")).limit(1)
+      return categoryLabelDataframe
     }
   }
 
   def createFinalDataFrame (inputSentence : String, analysedCategoryLabel : String) : DataFrame = {
     val existingSparkSession = SparkSession.builder().getOrCreate()
     import existingSparkSession.implicits._
-    val columnHeadings = Seq("sentence", "label")
     val data = Seq((inputSentence, analysedCategoryLabel))
     val emojiRdd = existingSparkSession.sparkContext.parallelize(data)
-    val finalEmojiAnalyzedDataFrame = emojiRdd.toDF()
+    val finalEmojiAnalyzedDataFrame = emojiRdd.toDF("sentence", "label")
+    finalEmojiAnalyzedDataFrame.write.csv("./src/main/resources/labeledEmojiData.csv")
     return  finalEmojiAnalyzedDataFrame
   }
 
- /* def extractedTextWithoutEmoji (tweetSentence : String) : String = {
-
-  }*/
+  /**
+   * Remove emojis from tweet
+   * @param tweetSentence tweet provided by stream
+   * @return sentence without emojis
+   */
+  def extractedTextWithoutEmoji (tweetSentence : String) : String = {
+    return raw"""\P{block=Emoticons}""".r.findAllIn(tweetSentence).mkString.trim
+  }
 
 }
