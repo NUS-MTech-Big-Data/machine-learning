@@ -1,19 +1,17 @@
-import java.io.{BufferedWriter, FileWriter}
+import java.io.File
 
-import au.com.bytecode.opencsv.CSVWriter
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.DataFrame
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.sql.functions._
 
-import scala.collection.mutable.ListBuffer
-import scala.util.Random
 
 object EmojiAnalysis {
 
   def emojiAnalysis(tweet : String) {
 
-    val inputEmoji = "I want to play table tennis  😡 😕 😟 😇"
+    val inputEmoji = "I am sad and crying 😡 😕 😟 😇"
 
     val ArrayEmoji = extractEmojiFromSentence(inputEmoji)
      println(ArrayEmoji.mkString(" "))
@@ -24,7 +22,7 @@ object EmojiAnalysis {
     val emojiDataFrame = calculateMeanForEmojiCategories(value, inputEmoji)
     val categoryLabel = emojiDataFrame.select("emotionCategory").collect().map(_.getString(0)).mkString("")
     val sentenceWithoutEmoji = extractedTextWithoutEmoji(inputEmoji)
-    val formatedDataFrameWithLabel = createFinalDataFrame(sentenceWithoutEmoji, categoryLabel)
+   val formatedDataFrameWithLabel = createFinalDataFrame(sentenceWithoutEmoji, categoryLabel)
     formatedDataFrameWithLabel.show(false)
 
   }
@@ -94,13 +92,45 @@ object EmojiAnalysis {
     }
   }
 
+  /**
+   * Create a new data frame with the input sentence without emoji and add the respective emoji
+   * write the data into a new csv file
+    * @param inputSentence
+   * @param analysedCategoryLabel
+   * @return
+   */
   def createFinalDataFrame (inputSentence : String, analysedCategoryLabel : String) : DataFrame = {
     val existingSparkSession = SparkSession.builder().getOrCreate()
     import existingSparkSession.implicits._
+    val hadoopConfig = new Configuration()
+    val hdfs = FileSystem.get(hadoopConfig)
+    val tmpParquetDir = "Posts.tmp.parquet"
     val data = Seq((inputSentence, analysedCategoryLabel))
     val emojiRdd = existingSparkSession.sparkContext.parallelize(data)
     val finalEmojiAnalyzedDataFrame = emojiRdd.toDF("sentence", "label")
-    finalEmojiAnalyzedDataFrame.write.csv("./src/main/resources/labeledEmojiData.csv")
+    //finalEmojiAnalyzedDataFrame.write.option("delimiter", ";").mode(SaveMode.Append).csv("./src/main/resources")
+    finalEmojiAnalyzedDataFrame.coalesce(1).write.mode ("append")
+      .format("com.databricks.spark.csv").option("delimiter", ";").save("./src/main/resources/emojiAnalysis")
+
+   /* val srcPath=new Path("./src/main/resources/emojiAnalysis")
+    val destPath= new Path("./src/main/resources/address_merged.csv")
+    val srcFile=FileUtil.listFiles(new File("./src/main/resources/emojiAnalysis"))
+      .filterNot(f=>f.getPath.endsWith(".csv"))(0)
+    //Copy the CSV file outside of Directory and rename
+    FileUtil.copy(srcFile,hdfs,destPath,true,hadoopConfig)
+    //Remove Directory created by df.write()
+    hdfs.delete(srcPath,true)
+    //Removes CRC File
+    hdfs.delete(new Path("./src/main/resources/emojiAnalysis/.address_merged.csv.crc"),true)
+
+    // Merge Using Haddop API
+    df.repartition(1).write.mode(SaveMode.Overwrite)
+      .csv("./src/main/resources/emojiAnalysis")
+    val srcFilePath=new Path("/tmp/address-tmp")
+    val destFilePath= new Path("/tmp/address_merged2.csv")
+    FileUtil.copyMerge(hdfs, srcFilePath, hdfs, destFilePath, true, hadoopConfig, null)
+    //Remove hidden CRC file if not needed.
+    hdfs.delete(new Path("/tmp/.address_merged2.csv.crc"),true)*/
     return  finalEmojiAnalyzedDataFrame
   }
 
