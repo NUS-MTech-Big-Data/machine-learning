@@ -5,13 +5,14 @@ import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.SQLContext
 
 
 object EmojiAnalysis {
 
   def emojiAnalysis(tweet : String) {
 
-    val inputEmoji = "I am sad and crying 😡 😕 😟 😇"
+    val inputEmoji = "I am angry😡 😕 😟 😇"
 
     val ArrayEmoji = extractEmojiFromSentence(inputEmoji)
      println(ArrayEmoji.mkString(" "))
@@ -24,6 +25,7 @@ object EmojiAnalysis {
     val sentenceWithoutEmoji = extractedTextWithoutEmoji(inputEmoji)
    val formatedDataFrameWithLabel = createFinalDataFrame(sentenceWithoutEmoji, categoryLabel)
     formatedDataFrameWithLabel.show(false)
+    combineCsvFiles()
 
   }
 
@@ -63,7 +65,7 @@ object EmojiAnalysis {
       .schema(schema)
       .csv("./src/main/resources/emojiDictionary.csv")
    val emojiCategory = emojiDictionary.join(emojiDataFrame, "unicode")
-    (emojiCategory.select("emoji","unicode","emotionCategory")).show(false)
+    (emojiCategory.select("emoji", "unicode", "emotionCategory")).show(false)
     return  emojiCategory
   }
 
@@ -112,25 +114,6 @@ object EmojiAnalysis {
     finalEmojiAnalyzedDataFrame.coalesce(1).write.mode ("append")
       .format("com.databricks.spark.csv").option("delimiter", ";").save("./src/main/resources/emojiAnalysis")
 
-   /* val srcPath=new Path("./src/main/resources/emojiAnalysis")
-    val destPath= new Path("./src/main/resources/address_merged.csv")
-    val srcFile=FileUtil.listFiles(new File("./src/main/resources/emojiAnalysis"))
-      .filterNot(f=>f.getPath.endsWith(".csv"))(0)
-    //Copy the CSV file outside of Directory and rename
-    FileUtil.copy(srcFile,hdfs,destPath,true,hadoopConfig)
-    //Remove Directory created by df.write()
-    hdfs.delete(srcPath,true)
-    //Removes CRC File
-    hdfs.delete(new Path("./src/main/resources/emojiAnalysis/.address_merged.csv.crc"),true)
-
-    // Merge Using Haddop API
-    df.repartition(1).write.mode(SaveMode.Overwrite)
-      .csv("./src/main/resources/emojiAnalysis")
-    val srcFilePath=new Path("/tmp/address-tmp")
-    val destFilePath= new Path("/tmp/address_merged2.csv")
-    FileUtil.copyMerge(hdfs, srcFilePath, hdfs, destFilePath, true, hadoopConfig, null)
-    //Remove hidden CRC file if not needed.
-    hdfs.delete(new Path("/tmp/.address_merged2.csv.crc"),true)*/
     return  finalEmojiAnalyzedDataFrame
   }
 
@@ -141,6 +124,17 @@ object EmojiAnalysis {
    */
   def extractedTextWithoutEmoji (tweetSentence : String) : String = {
     return raw"""\P{block=Emoticons}""".r.findAllIn(tweetSentence).mkString.trim
+  }
+
+  def combineCsvFiles (): DataFrame = {
+    val existingSparkSession = SparkSession.builder().getOrCreate()
+    import existingSparkSession.implicits._
+  val combinedCsvDataFrame =  existingSparkSession.read
+      .format("com.databricks.spark.csv")
+      .option("delimiter", ";")
+      .load("./src/main/resources/emojiAnalysis/*.csv")
+    combinedCsvDataFrame.show(false)
+    return combinedCsvDataFrame
   }
 
 }
