@@ -1,4 +1,5 @@
 import java.io.File
+import java.text.SimpleDateFormat
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
@@ -6,6 +7,8 @@ import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.SQLContext
+import java.time.LocalDateTime
+import java.util.Date
 
 
 object EmojiAnalysis {
@@ -104,16 +107,12 @@ object EmojiAnalysis {
   def createFinalDataFrame (inputSentence : String, analysedCategoryLabel : String) : DataFrame = {
     val existingSparkSession = SparkSession.builder().getOrCreate()
     import existingSparkSession.implicits._
-    val hadoopConfig = new Configuration()
-    val hdfs = FileSystem.get(hadoopConfig)
-    val tmpParquetDir = "Posts.tmp.parquet"
+
     val data = Seq((inputSentence, analysedCategoryLabel))
     val emojiRdd = existingSparkSession.sparkContext.parallelize(data)
     val finalEmojiAnalyzedDataFrame = emojiRdd.toDF("sentence", "label")
-    //finalEmojiAnalyzedDataFrame.write.option("delimiter", ";").mode(SaveMode.Append).csv("./src/main/resources")
     finalEmojiAnalyzedDataFrame.coalesce(1).write.mode ("append")
       .format("com.databricks.spark.csv").option("delimiter", ";").save("./src/main/resources/emojiAnalysis")
-
     return  finalEmojiAnalyzedDataFrame
   }
 
@@ -134,7 +133,19 @@ object EmojiAnalysis {
       .option("delimiter", ";")
       .load("./src/main/resources/emojiAnalysis/*.csv")
     combinedCsvDataFrame.show(false)
+    createCSVFromDataFrame(combinedCsvDataFrame)
     return combinedCsvDataFrame
+  }
+
+  def createCSVFromDataFrame (generatedDataFrame : DataFrame): Unit = {
+    val existingSparkSession = SparkSession.builder().getOrCreate()
+    existingSparkSession.sparkContext.setLogLevel("ERROR")
+    val fs = FileSystem.get(existingSparkSession.sparkContext.hadoopConfiguration)
+    generatedDataFrame.coalesce(1).write.mode ("append")
+    .option("delimiter", ";").csv("./src/main/resources/hourlyLabeledData/")
+    val outputFileName = fs.globStatus(new Path("./src/main/resources/hourlyLabeledData/part*"))(0).getPath.getName
+    val timestamp = new SimpleDateFormat("yyyyMMddHHmm").format(new Date())
+    fs.rename(new Path(s"./src/main/resources/hourlyLabeledData/$outputFileName"), new Path(s"./src/main/resources/hourlyLabeledData/${timestamp}.csv"))
   }
 
 }
