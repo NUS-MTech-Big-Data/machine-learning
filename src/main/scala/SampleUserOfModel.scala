@@ -15,7 +15,7 @@ object SampleUserOfModel {
       .schema(schema)
       .csv("./src/main/resources/test.csv")
 
-    val mlModel = PipelineModel.read.load("v1_supervised")
+    val mlModel = PipelineModel.read.load("../../project/v1_supervised")
 
     val results = mlModel.transform(testDataSet)
 

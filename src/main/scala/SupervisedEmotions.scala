@@ -1,8 +1,8 @@
+import DataPreprocessing._
+import com.johnsnowlabs.nlp.SparkNLP
 import com.johnsnowlabs.nlp.annotators.classifier.dl.ClassifierDLApproach
-import com.johnsnowlabs.nlp.embeddings.BertSentenceEmbeddings
-import com.johnsnowlabs.nlp.{DocumentAssembler, SparkNLP}
-import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.ml.Pipeline
+import org.apache.spark.sql.types.{StringType, StructType}
 
 object SupervisedEmotions {
   def main(args: Array[String]): Unit = {
@@ -17,25 +17,22 @@ object SupervisedEmotions {
       .schema(schema)
       .csv("./src/main/resources/train.csv")
 
-    trainingDataSet.show()
-
-    val document = new DocumentAssembler()
-      .setInputCol("sentence")
-      .setOutputCol("document")
-
-    val bert = BertSentenceEmbeddings.pretrained("sent_small_bert_L8_512")
-      .setInputCols("document")
-      .setOutputCol("sentence_embeddings")
-
-    val classifier = new ClassifierDLApproach()
-      .setInputCols("sentence_embeddings")
+    val classifierDeepLearning = new ClassifierDLApproach()
+      .setInputCols("sentenceEmbeddings")
       .setOutputCol("class")
       .setLabelColumn("emotion")
-      .setMaxEpochs(20)
+      .setMaxEpochs(5)
       .setEnableOutputLogs(true)
 
     val pipeline = new Pipeline()
-      .setStages(Array(document, bert, classifier))
+      .setStages(Array(documentAssembler("sentence", "document")
+        , tokenizer("document", "token")
+        , normalizer("token", "normalized")
+        , stopWordsCleaner("normalized", "cleanTokens")
+        , lemmatizer("cleanTokens", "lemma")
+        , wordEmbeddings(List("document", "lemma"), "wordEmbeddings")
+        , sentenceEmbeddings(List("document", "wordEmbeddings"), "sentenceEmbeddings")
+        , classifierDeepLearning))
 
     val supervisedModel = pipeline.fit(trainingDataSet)
 
