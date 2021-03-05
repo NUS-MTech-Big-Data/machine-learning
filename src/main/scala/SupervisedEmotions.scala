@@ -1,4 +1,4 @@
-import DataPreprocessing._
+import PipelineStages._
 import com.johnsnowlabs.nlp.SparkNLP
 import com.johnsnowlabs.nlp.annotators.classifier.dl.ClassifierDLApproach
 import org.apache.spark.ml.Pipeline

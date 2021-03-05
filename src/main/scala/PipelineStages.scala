@@ -3,7 +3,7 @@ import com.johnsnowlabs.nlp.annotators.{LemmatizerModel, StopWordsCleaner, Token
 import com.johnsnowlabs.nlp.embeddings.{BertEmbeddings, SentenceEmbeddings}
 import org.apache.spark.ml.PipelineStage
 
-object DataPreprocessing {
+object PipelineStages {
 
   def documentAssembler(inputColumn: String, outputColumn: String): PipelineStage = {
     new DocumentAssembler()
