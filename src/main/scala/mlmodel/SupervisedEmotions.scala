@@ -1,20 +1,18 @@
-import PipelineStages._
+package mlmodel
+
 import com.johnsnowlabs.nlp.SparkNLP
 import com.johnsnowlabs.nlp.annotators.classifier.dl.ClassifierDLApproach
 import org.apache.spark.ml.Pipeline
-import org.apache.spark.sql.types.{StringType, StructType}
+import PipelineStages._
+import datamodel.TrainingDataSchema
 
 object SupervisedEmotions {
   def main(args: Array[String]): Unit = {
 
     val spark = SparkNLP.start()
 
-    val schema = new StructType()
-      .add("sentence", dataType = StringType, nullable = false)
-      .add("emotion", dataType = StringType, nullable = false)
-
     val trainingDataSet = spark.read.option("delimiter", ";")
-      .schema(schema)
+      .schema(TrainingDataSchema.schema)
       .csv("./src/main/resources/train.csv")
 
     val classifierDeepLearning = new ClassifierDLApproach()
