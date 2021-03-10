@@ -15,7 +15,7 @@ object EmojiAnalysis {
 
   def emojiAnalysis(tweet : String) {
 
-    val inputEmoji = "I am angry😡 😕 😟 😇"
+    val inputEmoji = "Why are you angry today😡 😕 😟 😇"
 
     val ArrayEmoji = extractEmojiFromSentence(inputEmoji)
      println(ArrayEmoji.mkString(" "))
@@ -146,6 +146,8 @@ object EmojiAnalysis {
     val outputFileName = fs.globStatus(new Path("./src/main/resources/hourlyLabeledData/part*"))(0).getPath.getName
     val timestamp = new SimpleDateFormat("yyyyMMddHHmm").format(new Date())
     fs.rename(new Path(s"./src/main/resources/hourlyLabeledData/$outputFileName"), new Path(s"./src/main/resources/hourlyLabeledData/${timestamp}.csv"))
+    fs.delete(new Path(s"./src/main/resources/hourlyLabeledData/*.csv.crc"), true)
+
   }
 
 }
