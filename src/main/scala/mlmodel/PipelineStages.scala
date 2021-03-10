@@ -52,8 +52,9 @@ object PipelineStages {
   }
 
   def bertSentenceEmbeddings(model:String, inputColumns: List[String], outputColumn: String): BertSentenceEmbeddings = {
-    BertSentenceEmbeddings.pretrained()
+    BertSentenceEmbeddings.pretrained(model)
       .setInputCols(inputColumns.toArray)
       .setOutputCol(outputColumn)
+      .setCaseSensitive(false)
   }
 }

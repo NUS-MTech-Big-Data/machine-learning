@@ -13,7 +13,7 @@ object SampleUserOfModel {
       .schema(TrainingDataSchema.schema)
       .csv("./src/main/resources/test.csv")
 
-    val mlModel = PipelineModel.read.load("v1_supervised_bert_sentence1615209375354")
+    val mlModel = PipelineModel.read.load("v1_supervised_bert_sentence1615380402363")
 
     val results = mlModel.transform(testDataSet)
       .select(col("sentence"),

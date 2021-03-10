@@ -11,30 +11,28 @@ object BertSentenceEmbedding {
     val spark: SparkSession = SparkSession.builder.appName("BertSentenceModel").master("local[3]")
       .getOrCreate()
 
-    import spark.implicits._
     val trainingDataSet = spark.read.option("delimiter", ";")
       .schema(TrainingDataSchema.schema)
       .csv("./src/main/resources/train.csv")
-      .as[Sentence]
 
     val valDataSet = spark.read.option("delimiter", ";")
       .schema(TrainingDataSchema.schema)
       .csv("./src/main/resources/val.csv")
-      .as[Sentence]
 
     val combineDataSets = trainingDataSet.union(valDataSet)
 
     val classifierDeepLearning: ClassifierDLApproach = new ClassifierDLApproach()
       .setInputCols("sentenceEmbeddings")
+      .setLr(0.0001f)
       .setLabelColumn("emotion")
       .setOutputCol("class")
-      .setBatchSize(160)
-      .setMaxEpochs(10)
+      .setBatchSize(8)
+      .setValidationSplit(0.125f)
       .setEnableOutputLogs(true)
 
     val pipeline: Pipeline = new Pipeline()
       .setStages(Array(documentAssembler("sentence", "document")
-        , bertSentenceEmbeddings("sent_small_bert_L8_512", List("document"), "sentenceEmbeddings")
+        , bertSentenceEmbeddings("sent_small_bert_L8_768", List("document"), "sentenceEmbeddings")
         , classifierDeepLearning))
 
     val supervisedModel: PipelineModel = pipeline.fit(combineDataSets)
