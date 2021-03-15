@@ -1,5 +1,5 @@
 
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.{col, from_json, struct, to_json}
 import org.apache.spark.sql.functions._
 
@@ -9,15 +9,15 @@ object KafkaConnection {
    * Consume Kafka raw topic and format the data into a list after cleaning
    * @param hostAddress kafka IP address
    */
-  def readTweetsFromKafkaTopic (hostAddress: String) = {
+  def readTweetsFromKafkaTopic (hostAddress: String )  = {
 
     /*
     Read from kafka raw topic
      */
     val existingSparkSession = SparkSession.builder().getOrCreate()
-    import existingSparkSession.implicits._
+
     val readStream = existingSparkSession
-      .read
+      .readStream
       .format("kafka")
       .option("kafka.bootstrap.servers", hostAddress)
       .option("subscribe", "twitter.raw") // Always read from offset 0, for dev/testing purpose
@@ -30,7 +30,6 @@ object KafkaConnection {
      */
     val df = readStream.selectExpr("CAST(value AS STRING)" ) // cast value from bytes to string
 
-    df.show(false)
     val df_json = df.select(from_json(col("value"), TweetSchema.defineSchema()).alias("parsed_value"))
 
     df_json.printSchema()
@@ -46,26 +45,55 @@ object KafkaConnection {
         col("filtered") as "FilteredText"
       )).alias("value")
     )
-    df_clean.show(false)
+
     df_clean.printSchema()
 
     /*
      Extract tweets and store as a new column in the dataframe
     */
-    val df2 = df_clean.withColumn("Texts", get_json_object(col("value"), "$.Text"))
+    val df2 = df_clean.withColumn("value", get_json_object(col("value"), "$.Text"))
     df2.printSchema()
-    df2.select("Texts").show(false)
-  val tweetDataframe =  df2.select("Texts")
-    tweetDataframe.show(false)
+
+    val tweetDataframe =  df2.select("value")
 
     /*
-    Reformat the tweets to remove new lines
+    Rewrite the pre-processed data into kafka topic
      */
-  val singleLineDataframe =  tweetDataframe.withColumn("Texts", regexp_replace(col("Texts"), "[\\r\\n\\n]", "."))
-    singleLineDataframe.show(false)
- val tweetList =   singleLineDataframe.select("Texts").rdd.map(r => r(0)).collect.toList
-    for ( p <- tweetList)
-      println(p)
+    val formattedTweetList = reformatTweets(tweetDataframe)
+   val writeStream = formattedTweetList
+     .writeStream
+     .outputMode("append")
+     .format("kafka")
+     .option("kafka.bootstrap.servers", hostAddress)
+     .option("topic", "emoji.analysis")
+     .option("checkpointLocation", "./src/main/resources/kafka")
+     .start()
+    existingSparkSession.streams.awaitAnyTermination()
     existingSparkSession.stop()
+
   }
+
+  /**
+   * Format extracted tweets by removing retweets, usernames, urls, unnecessary characters
+   */
+  def reformatTweets (extractedTweets : DataFrame) : DataFrame = {
+
+    val singleLineDataframe =  extractedTweets.withColumn("value", regexp_replace(col("value"), "[\\r\\n\\n]", "."))
+
+    val nonUrlTweetDataframe  = singleLineDataframe.withColumn("value", regexp_replace(col("value"), "http\\S+", ""))
+
+    val nonHashTagsTweetDataframe = nonUrlTweetDataframe.withColumn("value", regexp_replace(col("value"), "#", ""))
+
+    val nonUserNameTweets = nonHashTagsTweetDataframe.withColumn("value", regexp_replace(col("value"), "@\\w+", ""))
+
+    val noRTDataFrame = nonUserNameTweets.withColumn("value", regexp_replace(col("value"), "RT", ""))
+
+    val noUrlTweetDataframe  = noRTDataFrame.withColumn("value", regexp_replace(col("value"), "www\\S+", ""))
+
+    val removeUnnecessaryCharacter  = noUrlTweetDataframe.withColumn("value", regexp_replace(col("value"), ":", ""))
+
+    return removeUnnecessaryCharacter
+  }
+
+
 }

@@ -2,6 +2,7 @@ import com.johnsnowlabs.nlp.pretrained.PretrainedPipeline
 import org.apache.spark.ml.feature.{RegexTokenizer, StopWordsRemover}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, explode}
+import org.apache.spark.sql.functions._
 
 object DataPreprocessing {
   /**
@@ -40,4 +41,10 @@ object DataPreprocessing {
     val df_english = df_language.filter(col("language") === "en")
     df_english
   }
+
+  def removeUrls (tweetDataframe : DataFrame, columnName : String) : DataFrame = {
+   tweetDataframe.withColumn("Texts", regexp_replace(col(""+columnName), "http\\S+", ""))
+    return tweetDataframe
+  }
+
 }
