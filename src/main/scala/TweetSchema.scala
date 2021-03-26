@@ -1,10 +1,11 @@
-import org.apache.spark.sql.types.{ArrayType, LongType, StringType, StructType}
+import org.apache.spark.sql.types.{ArrayType, LongType, StringType, StructType, TimestampType}
 
 object TweetSchema {
 
   def defineSchema(): StructType = {
     val userSchema = new StructType()
       .add("Id", LongType)
+      .add("timestamp", TimestampType)
       .add("Name", StringType)
       .add("ScreenName", StringType) // Twitter User Handle
       .add("Location", StringType)
