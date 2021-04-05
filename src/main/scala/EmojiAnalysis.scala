@@ -77,6 +77,7 @@ object EmojiAnalysis {
    * @return
    */
   def selectAppropriateEmotionLabel(emotionDataframe : DataFrame) : DataFrame = {
+println("+++++++++++++++++++++++++++++++++++++")
     val categorizeUDF = udf(
       (label: Seq[String]) =>
         if ((label.distinct.size != label.size) || (label.size == 1)) {
@@ -85,11 +86,23 @@ object EmojiAnalysis {
           "invalid"
         }
     )
-    val labeledDataframe = emotionDataframe.select(
-      col("value") as("sentence"),
-      categorizeUDF(col("category")).as("emotionCategory")
-    ).filter("emotionCategory != 'invalid'")
-    labeledDataframe
+
+      val labeledDataframe = emotionDataframe.select(
+        col("value") as("sentence"),
+        categorizeUDF(col("category")).as("emotionCategory")
+      ).filter("emotionCategory != 'invalid'")
+      labeledDataframe
+
+  }
+
+  /**
+   * Remove emojis from the finalDataframe
+   */
+  def removeEmojiFromTweet(labeledDataFrame : DataFrame) : DataFrame = {
+    println("__________________________")
+    val dataFrameWithoutEmoji = labeledDataFrame.withColumn("sentence", regexp_replace(labeledDataFrame("sentence"), """[^ 'a-zA-Z0-9,.?!]""", " "))
+    //val dataFrameWithoutTimestamp = dataFrameWithoutEmoji.select("sentence", "emotionCategory")
+    dataFrameWithoutEmoji
   }
 }
 

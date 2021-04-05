@@ -73,7 +73,8 @@ object KafkaConnection {
    * Format extracted tweets by removing retweets, usernames, urls, unnecessary characters
    */
   def reformatTweets (extractedTweets : DataFrame) : DataFrame = {
-
+    println("----TWEETCLEAN-----------")
+    extractedTweets.printSchema()
     val singleLineDataframe =  extractedTweets.withColumn("value", regexp_replace(col("value"), "[\\r\\n\\n]", "."))
 
     val nonUrlTweetDataframe  = singleLineDataframe.withColumn("value", regexp_replace(col("value"), "http\\S+", ""))
@@ -111,7 +112,8 @@ object KafkaConnection {
     waterMarkdataFrame.printSchema()
     val joinedDataframe =  EmojiAnalysis.joinTwoDataframes(waterMarkdataFrame)
     val classifiedDataFrame =  EmojiAnalysis.selectAppropriateEmotionLabel(joinedDataframe)
-    writingToKafkaTopic(classifiedDataFrame, hostAddress)
+    val noEmojiTweetsDataframe = EmojiAnalysis.removeEmojiFromTweet(classifiedDataFrame)
+    writingToKafkaTopic(noEmojiTweetsDataframe, hostAddress)
     classifiedDataFrame
   }
 
@@ -121,6 +123,7 @@ object KafkaConnection {
    * @param hostAddress
    */
   def writingToKafkaTopic(finalDataFrame : DataFrame, hostAddress: String): Unit = {
+    finalDataFrame.printSchema()
     val existingSparkSession = SparkSession.builder().getOrCreate()
     val writeStream = finalDataFrame
     .selectExpr("to_json(struct(*)) AS value")
@@ -128,7 +131,7 @@ object KafkaConnection {
       .outputMode("append")
       .format("kafka")
       .option("kafka.bootstrap.servers", hostAddress)
-      .option("topic", "emoji.analysis9")
+      .option("topic", "emoji.analysis009")
       .option("checkpointLocation", "./src/main/resources/kafka")
       .start()
     existingSparkSession.streams.awaitAnyTermination()
