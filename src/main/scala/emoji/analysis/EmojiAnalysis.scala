@@ -1,10 +1,8 @@
-import java.text.SimpleDateFormat
-import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.types.{StringType, StructType}
-import org.apache.spark.sql.functions._
-import java.util.Date
+package emoji.analysis
 
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.{StringType, StructType}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object EmojiAnalysis {
   /**
@@ -105,5 +103,3 @@ object EmojiAnalysis {
     dataFrameWithoutEmoji
   }
 }
-
-

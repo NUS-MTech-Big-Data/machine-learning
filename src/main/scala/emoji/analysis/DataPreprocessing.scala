@@ -1,8 +1,9 @@
+package emoji.analysis
+
 import com.johnsnowlabs.nlp.pretrained.PretrainedPipeline
 import org.apache.spark.ml.feature.{RegexTokenizer, StopWordsRemover}
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{col, explode}
-import org.apache.spark.sql.functions._
+import org.apache.spark.sql.functions.{col, explode, regexp_replace}
 
 object DataPreprocessing {
   /**

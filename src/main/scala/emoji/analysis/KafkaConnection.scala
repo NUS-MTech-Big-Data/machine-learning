@@ -1,8 +1,8 @@
+package emoji.analysis
+
 import org.apache.hadoop.fs.FileSystem
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.{col, from_json, struct, to_json}
-import org.apache.spark.sql.functions.current_timestamp
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object KafkaConnection {
 
@@ -137,7 +137,7 @@ object KafkaConnection {
       //.outputMode("append")
       .format("kafka")
       .option("kafka.bootstrap.servers", hostAddress)
-      .option("topic", "emoji.analysisTest69")
+      .option("topic", "emoji.analysis")
       .option("checkpointLocation", "test_path")
       .start()
     writeStream.awaitTermination()

@@ -1,4 +1,6 @@
-import org.apache.spark.sql.types.{ArrayType, LongType, StringType, StructType, TimestampType}
+package emoji.analysis
+
+import org.apache.spark.sql.types._
 
 object TweetSchema {
 
