@@ -19,7 +19,17 @@ object TweetSchema {
         .add("Text", StringType)
         .add("User", userSchema)
         .add("HashtagEntities", ArrayType(hashTagSchema))
+
       )
+  }
+
+  def defineS3SinkSchema() : StructType = {
+    new StructType()
+      .add("payload", new StructType()
+        .add("sentence", StringType)
+        .add("Id", LongType)
+        .add("emotion", StringType)
+        )
   }
 
 }

@@ -56,6 +56,7 @@ object EmojiAnalysis {
    * @return
    */
   def joinTwoDataframes(emojiDataframe : DataFrame) : DataFrame = {
+    emojiDataframe.printSchema()
     val existingSparkSession = SparkSession.builder().getOrCreate()
     import existingSparkSession.sqlContext.implicits._
 
@@ -68,7 +69,7 @@ object EmojiAnalysis {
       .csv("./src/main/resources/emojiDictionary.csv")
 
     val x = emojiDictionary.withColumn("label", struct('emotionCategory))
-  emojiDictionary.join(emojiDataframe, array_contains(emojiDataframe("unicodeValue"), emojiDictionary("unicode"))).withWatermark("eventTime", "2 seconds").groupBy(col("value"), window(col("eventTime"), " 5 seconds")).agg(collect_list('emotionCategory).as("category"))
+  emojiDictionary.join(emojiDataframe, array_contains(emojiDataframe("unicodeValue"), emojiDictionary("unicode"))).withWatermark("eventTime", "2 seconds").groupBy(col("value"),col("key"), window(col("eventTime"), " 5 seconds")).agg(collect_list('emotionCategory).as("category"))
   }
 
   /**
@@ -77,7 +78,6 @@ object EmojiAnalysis {
    * @return
    */
   def selectAppropriateEmotionLabel(emotionDataframe : DataFrame) : DataFrame = {
-println("+++++++++++++++++++++++++++++++++++++")
     val categorizeUDF = udf(
       (label: Seq[String]) =>
         if ((label.distinct.size != label.size) || (label.size == 1)) {
@@ -88,6 +88,7 @@ println("+++++++++++++++++++++++++++++++++++++")
     )
 
       val labeledDataframe = emotionDataframe.select(
+        col("key"),
         col("value") as("sentence"),
         categorizeUDF(col("category")).as("emotionCategory")
       ).filter("emotionCategory != 'invalid'")
@@ -99,9 +100,8 @@ println("+++++++++++++++++++++++++++++++++++++")
    * Remove emojis from the finalDataframe
    */
   def removeEmojiFromTweet(labeledDataFrame : DataFrame) : DataFrame = {
-    println("__________________________")
     val dataFrameWithoutEmoji = labeledDataFrame.withColumn("sentence", regexp_replace(labeledDataFrame("sentence"), """[^ 'a-zA-Z0-9,.?!]""", " "))
-    //val dataFrameWithoutTimestamp = dataFrameWithoutEmoji.select("sentence", "emotionCategory")
+    dataFrameWithoutEmoji.printSchema()
     dataFrameWithoutEmoji
   }
 }

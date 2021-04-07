@@ -64,7 +64,7 @@ object KafkaConnection {
     /*
     Rewrite the pre-processed data into kafka topic
      */
-    val formattedTweetData = reformatTweets(tweetDataframe)
+    val formattedTweetData = reformatTweets(df2)
     formattedTweetData.printSchema()
     formattedTweetData
   }
@@ -73,7 +73,6 @@ object KafkaConnection {
    * Format extracted tweets by removing retweets, usernames, urls, unnecessary characters
    */
   def reformatTweets (extractedTweets : DataFrame) : DataFrame = {
-    println("----TWEETCLEAN-----------")
     extractedTweets.printSchema()
     val singleLineDataframe =  extractedTweets.withColumn("value", regexp_replace(col("value"), "[\\r\\n\\n]", "."))
 
@@ -111,6 +110,7 @@ object KafkaConnection {
     val waterMarkdataFrame =    emojiUnicodeDataFrame.withColumn("eventTime",current_timestamp())
     waterMarkdataFrame.printSchema()
     val joinedDataframe =  EmojiAnalysis.joinTwoDataframes(waterMarkdataFrame)
+    joinedDataframe.printSchema()
     val classifiedDataFrame =  EmojiAnalysis.selectAppropriateEmotionLabel(joinedDataframe)
     val noEmojiTweetsDataframe = EmojiAnalysis.removeEmojiFromTweet(classifiedDataFrame)
     writingToKafkaTopic(noEmojiTweetsDataframe, hostAddress)
@@ -125,16 +125,22 @@ object KafkaConnection {
   def writingToKafkaTopic(finalDataFrame : DataFrame, hostAddress: String): Unit = {
     finalDataFrame.printSchema()
     val existingSparkSession = SparkSession.builder().getOrCreate()
-    val writeStream = finalDataFrame
-    .selectExpr("to_json(struct(*)) AS value")
+    val jsonFormatData = finalDataFrame.select(col("key").cast("string").alias("key"),
+      to_json(struct(
+        col("sentence").as("sentence"),
+        col("emotionCategory").as("emotion"),
+        col("key").as("Id")
+      )).alias("value"))
+    jsonFormatData.printSchema()
+    val writeStream = jsonFormatData
       .writeStream
-      .outputMode("append")
+      //.outputMode("append")
       .format("kafka")
       .option("kafka.bootstrap.servers", hostAddress)
-      .option("topic", "emoji.analysis009")
-      .option("checkpointLocation", "./src/main/resources/kafka")
+      .option("topic", "emoji.analysisTest69")
+      .option("checkpointLocation", "test_path")
       .start()
-    existingSparkSession.streams.awaitAnyTermination()
+    writeStream.awaitTermination()
   }
 
 }
