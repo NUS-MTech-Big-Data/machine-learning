@@ -12,9 +12,10 @@ object KafkaConnection {
    */
   def readTweetsFromKafkaTopic (hostAddress: String ) : DataFrame  = {
 
-    val existingSparkSession = SparkSession.builder().config("dfs.client.read.shortcircuit.skip.checksum", "true").getOrCreate()
-    val fs = FileSystem.get(existingSparkSession.sparkContext.hadoopConfiguration)
-    fs.setVerifyChecksum(false)
+//    val existingSparkSession = SparkSession.builder().config("dfs.client.read.shortcircuit.skip.checksum", "true").getOrCreate()
+    val existingSparkSession = SparkSession.builder().getOrCreate()
+//    val fs = FileSystem.get(existingSparkSession.sparkContext.hadoopConfiguration)
+//    fs.setVerifyChecksum(false)
 
     /*
    Read from kafka raw topic
