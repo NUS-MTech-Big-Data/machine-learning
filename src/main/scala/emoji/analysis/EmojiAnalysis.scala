@@ -64,10 +64,10 @@ object EmojiAnalysis {
 
     val emojiDictionary = existingSparkSession.read.option("delimiter", ",")
       .schema(schema)
-      .csv("./src/main/resources/emojiDictionary.csv")
+      .csv("emojiDictionary.csv")
 
     val x = emojiDictionary.withColumn("label", struct('emotionCategory))
-  emojiDictionary.join(emojiDataframe, array_contains(emojiDataframe("unicodeValue"), emojiDictionary("unicode"))).withWatermark("eventTime", "2 seconds").groupBy(col("value"),col("key"), window(col("eventTime"), " 5 seconds")).agg(collect_list('emotionCategory).as("category"))
+  emojiDictionary.join(emojiDataframe, array_contains(emojiDataframe("unicodeValue"), emojiDictionary("unicode"))).withWatermark("eventTime", "2 seconds").groupBy(col("value"),col("key"),col("CreatedAt"),col("Location"), window(col("eventTime"), " 5 seconds")).agg(collect_list('emotionCategory).as("category"))
   }
 
   /**
@@ -86,9 +86,11 @@ object EmojiAnalysis {
     )
 
       val labeledDataframe = emotionDataframe.select(
+        col("CreatedAt"),
         col("key"),
         col("value") as("sentence"),
-        categorizeUDF(col("category")).as("emotionCategory")
+        categorizeUDF(col("category")).as("emotionCategory"),
+        col("Location")
       ).filter("emotionCategory != 'invalid'")
       labeledDataframe
 

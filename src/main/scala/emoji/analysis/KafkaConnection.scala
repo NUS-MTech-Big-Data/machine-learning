@@ -41,12 +41,14 @@ object KafkaConnection {
     /*
     Filter English tweets, tokenization, removal of stop words
      */
-    val df_english = DataPreprocessing.filterNonEnglish(df_text, inputColumn = "text")
+   val df_english = DataPreprocessing.filterNonEnglish(df_text, inputColumn = "text")
     val df_tokenized = DataPreprocessing.tokenize(df_english, inputColumn = "text", outputColumn = "words")
     val df_filtered = DataPreprocessing.removeStopWords(df_tokenized, inputColumn = "words", outputColumn = "filtered")
 
     val df_clean = df_filtered.select(
       col("parsed_value.payload.Id").cast("string").alias("key"), // key must be string or bytes
+      col("parsed_value.payload.CreatedAt").cast("string").alias("CreatedAt"),
+      col("parsed_value.payload.User.Location").cast("string").alias("Location"),
       to_json(struct(
         col("parsed_value.payload.*"),
         col("filtered") as "FilteredText"
@@ -128,9 +130,11 @@ object KafkaConnection {
     val existingSparkSession = SparkSession.builder().getOrCreate()
     val jsonFormatData = finalDataFrame.select(col("key").cast("string").alias("key"),
       to_json(struct(
+        col("CreatedAt"),
+        col("key").as("Id"),
         col("sentence").as("sentence"),
         col("emotionCategory").as("emotion"),
-        col("key").as("Id")
+        col("Location")
       )).alias("value"))
     jsonFormatData.printSchema()
     val writeStream = jsonFormatData
@@ -138,7 +142,7 @@ object KafkaConnection {
       //.outputMode("append")
       .format("kafka")
       .option("kafka.bootstrap.servers", hostAddress)
-      .option("topic", "emoji.analysis")
+      .option("topic", "twitter.emojiAnalysis")
       .option("checkpointLocation", "test_path")
       .start()
     writeStream.awaitTermination()
