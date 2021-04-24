@@ -15,11 +15,19 @@ object SupervisedEmotions {
       .schema(TrainingDataSchema.schema)
       .csv("./src/main/resources/train.csv")
 
+    val valDataSet = spark.read.option("delimiter", ";")
+      .schema(TrainingDataSchema.schema)
+      .csv("./src/main/resources/val.csv")
+
+    val combineDataSets = trainingDataSet.union(valDataSet)
+
     val classifierDeepLearning = new ClassifierDLApproach()
       .setInputCols("sentenceEmbeddings")
+      .setLr(0.0001f)
       .setOutputCol("class")
       .setLabelColumn("emotion")
-      .setMaxEpochs(5)
+      .setBatchSize(3)
+      .setValidationSplit(0.1f)
       .setEnableOutputLogs(true)
 
     val pipeline = new Pipeline()
@@ -32,8 +40,8 @@ object SupervisedEmotions {
         , sentenceEmbeddings(List("document", "wordEmbeddings"), "sentenceEmbeddings")
         , classifierDeepLearning))
 
-    val supervisedModel = pipeline.fit(trainingDataSet)
+    val supervisedModel = pipeline.fit(combineDataSets)
 
-    supervisedModel.write.save("v1_supervised")
+    supervisedModel.write.save(s"v1_supervised_bert_word_universal_pooling${System.currentTimeMillis()}")
   }
 }
