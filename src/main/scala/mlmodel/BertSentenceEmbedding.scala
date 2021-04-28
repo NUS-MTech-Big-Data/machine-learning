@@ -1,7 +1,7 @@
 package mlmodel
 
 import com.johnsnowlabs.nlp.annotators.classifier.dl.ClassifierDLApproach
-import datamodel.{Sentence, TrainingDataSchema}
+import datamodel.TrainingDataSchema
 import mlmodel.PipelineStages._
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.sql.SparkSession
