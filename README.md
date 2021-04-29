@@ -17,6 +17,8 @@ Java 8
 Hadoop 2.7
 Spark 2.4.7
 Scala 2.11.12
+Zookeeper
+Kafka
 ```
 
 # Dev Setup
